@@ -1,0 +1,14 @@
+yellowstone_grpc:
+  endpoint: "http://10.1.0.100:10000"
+  x_token: null
+  max_decoding_message_size: 8388608
+  commitment: "PROCESSED"
+  topic_name: "grpc-blocks" 
+  filters:
+    blocks_meta: true
+  format: "json"
+  metrics:
+    enabled: true
+    api_token: "Bearer nzFPcJVMCXhiezkwW2CgLToy"
+    endpoint: "https://s1231159.eu-nbg-2.betterstackdata.com/metrics"
+    interval: 10
