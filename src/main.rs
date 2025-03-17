@@ -58,8 +58,8 @@ async fn main() -> anyhow::Result<()> {
     // Connect to Fluvio
     let fluvio = Fluvio::connect().await?; 
     let topic_name = &config.yellowstone_grpc.topic_name;  
-ensure_topic_exists(&fluvio, topic_name).await?;
-let producer = Arc::new(fluvio.topic_producer(topic_name).await.expect("Failed to create producer"));
+    ensure_topic_exists(&fluvio, topic_name).await?;
+    let producer = Arc::new(fluvio.topic_producer(topic_name).await.expect("Failed to create producer"));
 
     let runtime = tokio::runtime::Runtime::new()?; 
     let _guard = runtime.enter(); 
