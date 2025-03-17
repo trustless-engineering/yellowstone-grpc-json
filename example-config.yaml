@@ -1,0 +1,14 @@
+yellowstone_grpc:
+  endpoint: 
+  x_token: 
+  max_decoding_message_size: 
+  commitment: 
+  topic_name: 
+  filters:
+    blocks_meta: 
+  format: 
+  metrics:
+    enabled: 
+    api_token: 
+    endpoint: 
+    interval: 
