@@ -34,7 +34,7 @@ use yellowstone_grpc_proto::
 #[derive(Debug)]
 enum ProcessingMessage {
     Transaction(SubscribeUpdateTransaction),
-    //Account(SubscribeUpdateAccount),
+    Account(SubscribeUpdateAccount),
     BlockMetadata(SubscribeUpdateBlockMeta),
     Shutdown,
 }
@@ -175,7 +175,36 @@ async fn main() -> anyhow::Result<()> {
                             break;
                         }
                     },
-                    // Handle other message types similarly...
+                    Some(UpdateOneof::Account(msg)) => {
+                        if last_slot_check.elapsed() >= Duration::from_secs(5) {
+                            let slot = msg.slot;
+
+                            // Get all slot info, handling potential errors
+                            let processed = client.get_slot(Some(CommitmentLevel::Processed)).await.ok();
+                            let confirmed = client.get_slot(Some(CommitmentLevel::Confirmed)).await.ok();
+                            let finalized = client.get_slot(Some(CommitmentLevel::Finalized)).await.ok();
+
+                            if let (Some(processed), Some(confirmed), Some(finalized)) = (processed, confirmed, finalized) {
+                                let processed_diff = processed.slot as i64 - slot as i64;
+                                let confirmed_diff = confirmed.slot as i64 - slot as i64;
+                                let finalized_diff = finalized.slot as i64 - slot as i64;
+
+                                info!(
+                                    "Last slot processed: {}, Mainnet watermarks: [P: {}, C: {}, F: {}], Deltas: [P: {}, C: {}, F: {}]", 
+                                    format_slot_yellow(slot), 
+                                    format_slot(processed.slot), format_slot(confirmed.slot), format_slot(finalized.slot),
+                                    format_delta(processed_diff), format_delta(confirmed_diff), format_delta(finalized_diff)
+                                );
+                            }
+                            last_slot_check = Instant::now();
+                        }
+
+                        if tx_sender.send(ProcessingMessage::Account(msg)).await.is_err() {
+                            error!("Accounts channel closed, shutting down");
+                            break;
+                        }
+                    },
+                    // Other types can go here 
                     _ => {},
                 },
                 Err(e) => {
@@ -243,6 +272,27 @@ async fn transaction_processor(
                     error!("Error processing block metadata: {:?}", e);
                     error!("Fatal error processing block metadata. Exiting...");
                     std::process::exit(1);
+                }
+            }
+            ProcessingMessage::Account(account) => {
+                // Make sure `account.account` is present
+                if let Some(account_info) = account.account.as_ref() {
+                    let key = if let Some(signature) = &account_info.txn_signature {
+                        RecordKey::from(bs58::encode(signature).into_string())
+                    } else {
+                        RecordKey::from(bs58::encode(&account_info.pubkey).into_string())
+                    };
+            
+                    let json_value = formatters::format_account(account)
+                        .unwrap_or_else(|_| serde_json::json!({}));
+            
+                    if let Err(e) = producer.send(key, json_value.to_string().into_bytes()).await {
+                        error!("Error processing account update: {:?}", e);
+                        error!("Fatal error processing account update. Exiting...");
+                        std::process::exit(1);
+                    }
+                } else {
+                    error!("Received SubscribeUpdateAccount without account info");
                 }
             }
             ProcessingMessage::Shutdown => break,

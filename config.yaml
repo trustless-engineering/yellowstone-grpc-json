@@ -5,7 +5,7 @@ yellowstone_grpc:
   commitment: "PROCESSED"
   topic_name: "grpc-blocks" 
   filters:
-    blocks_meta: true
+    account: "9wFFyRfZBsuAha4YcuxcXLKwMxJR43S7fPfQLusDBzvT"
   format: "json"
   metrics:
     enabled: true
