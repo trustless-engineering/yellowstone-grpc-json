@@ -6,18 +6,26 @@ use yellowstone_grpc_proto::{convert_from, geyser::{
     CommitmentLevel, SubscribeUpdateAccount, SubscribeUpdateAccountInfo, SubscribeUpdateBlock, SubscribeUpdateBlockMeta, SubscribeUpdateEntry, SubscribeUpdateSlot, SubscribeUpdateTransaction, SubscribeUpdateTransactionInfo, SubscribeUpdateTransactionStatus
 }};
 use log::info;
+use base64;
 
 use crate::EPOCH_SIZE;
 
-pub fn format_account(msg: SubscribeUpdateAccount) -> anyhow::Result<Value> {
-    let account = msg
-        .account
-        .ok_or(anyhow::anyhow!("no account in the message"))?;
-    let mut value = create_pretty_account(account)?;
+pub fn format_account(update: SubscribeUpdateAccount) -> anyhow::Result<Value> {
+    let Some(account_info) = update.account else {
+        return Err(anyhow::anyhow!("Missing account info"));
+    };
 
-    value["isStartup"] = json!(msg.is_startup);
-    value["slot"] = json!(msg.slot);
-    Ok(value)
+    let base64_data = base64::encode(&account_info.data);
+
+    Ok(json!({
+        "pubkey": bs58::encode(&account_info.pubkey).into_string(),
+        "lamports": account_info.lamports,
+        "owner": bs58::encode(&account_info.owner).into_string(),
+        "rent_epoch": account_info.rent_epoch,
+        "slot": update.slot,
+        "data": base64_data,
+        "txn_signature": account_info.txn_signature.as_ref().map(|sig| bs58::encode(sig).into_string()),
+    }))
 }
 
 pub fn format_slot(msg: SubscribeUpdateSlot) -> anyhow::Result<Value> {
