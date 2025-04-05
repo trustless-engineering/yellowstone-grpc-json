@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:1.82.0 AS builder
+FROM --platform=$BUILDPLATFORM rust:1.86.0 AS builder
 
 # Add only the target we need based on TARGETPLATFORM
 ARG TARGETPLATFORM
